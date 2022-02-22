@@ -89,9 +89,8 @@ if __name__ == '__main__':
                     if [sum(attr) % 3 for attr in zip(*triple)] == [0, 0, 0, 0]:
                         sets.append(triple)
 
-                # If there are no sets, exit
+                # If there are no sets, retry
                 if len(sets) == 0:
-                    # break
                     continue
 
                 # Maximum independent set
@@ -105,13 +104,16 @@ if __name__ == '__main__':
 
                 # Click the sets
                 for set in independent_sets:
-                    webdriver.ActionChains(browser).send_keys(
-                        Keys.ESCAPE).perform()
-                    for card in set:
-                        card_tuples[card].click()
+                    try:
+                        webdriver.ActionChains(browser).send_keys(
+                            Keys.ESCAPE).perform()
+                        for card in set:
+                            card_tuples[card].click()
+                    except:
+                        continue
 
                 # Wait for the transition
-                time.sleep(0.75)
+                time.sleep(0.1)
             except Exception as e:
                 print(e)
                 continue
