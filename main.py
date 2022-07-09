@@ -54,15 +54,18 @@ if __name__ == '__main__':
         if len(sys.argv) == 2:
             time.sleep(float(sys.argv[1]))
         else:
-            time.sleep(2)
+            time.sleep(5)
         browser.find_element(
             By.XPATH, '//button[@class="MuiButtonBase-root MuiButton-root MuiButton-contained MuiButton-containedPrimary MuiButton-containedSizeLarge MuiButton-sizeLarge MuiButton-fullWidth"]').click()
 
+        container = browser.find_element(
+            By.XPATH, '//div[@class="MuiPaper-root MuiPaper-elevation1 MuiPaper-rounded"]')
+        used = set()
         while True:
             try:
                 # Get all active cards
-                cards = browser.find_elements(
-                    By.XPATH, '//div[@class="MuiPaper-root MuiPaper-elevation1 MuiPaper-rounded"]/div[contains(@style, "visibility: visible;")]/div')
+                cards = container.find_elements(
+                    By.XPATH, '//div[contains(@style, "visibility: visible;")]/div')
                 # Map cards to card tuples
                 card_tuples = {}
                 for card in cards:
@@ -75,18 +78,20 @@ if __name__ == '__main__':
                     else:
                         pattern = 3
 
-                    card_tuples[(
+                    tup = (
                         len(shapes),  # Count
                         COLOURS[shape_data[1].get_attribute(
                             'stroke')],  # Colour
                         SHAPES[shape_data[0].get_attribute('href')],  # Shape
                         pattern,  # Pattern
-                    )] = card
+                    )
+                    if tup not in used:
+                        card_tuples[tup] = card
 
                 # Find all triples
                 sets = []
                 for triple in itertools.combinations(card_tuples, 3):
-                    if [sum(attr) % 3 for attr in zip(*triple)] == [0, 0, 0, 0]:
+                    if sum(sum(attr) % 3 for attr in zip(*triple)) == 0:
                         sets.append(triple)
 
                 # If there are no sets, retry
@@ -99,23 +104,18 @@ if __name__ == '__main__':
                 for pair in itertools.combinations(sets, 2):
                     if any(card in pair[1] for card in pair[0]):
                         g.add_edge(*pair)
-                        g.add_edge(*pair[::-1])
                 independent_sets = nx.algorithms.maximal_independent_set(g)
 
                 # Click the sets
                 for set in independent_sets:
-                    try:
-                        webdriver.ActionChains(browser).send_keys(
-                            Keys.ESCAPE).perform()
-                        for card in set:
-                            card_tuples[card].click()
-                    except:
-                        continue
-
-                # Wait for the transition
-                time.sleep(0.1)
+                    for card in set:
+                        browser.execute_script(
+                            "arguments[0].click();", card_tuples[card])
+                        used.add(card)
+                    if set != independent_sets[-1]:
+                        time.sleep(0.1)
             except Exception as e:
-                print(e)
+                print(f'Outer exception: {e}')
                 continue
     except Exception as e:
         print(e)
